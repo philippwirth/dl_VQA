@@ -1,2 +1,2 @@
-# dp_VQA
+# dl_VQA
 Deep Learning project about Visual Question Answering using TensorFLow
