@@ -116,8 +116,17 @@ class VQAModel:
 
 		# embed image with a biLSTM
 		state = tf.zeros([self.batch_size, self.bi_lstm.state_size])
-		for i in range(self.n_sub_images):
-			output, state = self.bi_lstm(resnet_out[:, i], state)
+		for i in range(self.n_sub_images+1):
+			if i == 0:
+				img_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
+			else:
+				tf.get_variable_scope().reuse_variables()
+				img_emb_linear = resnet_out[:, i-1]
+
+			img_emb_drop = tf.nn.dropout(img_emb_linear, 1 - self.drop_out_rate)
+			img_emb = tf.tanh(img_emb_drop)
+
+			output, state = self.bi_lstm(img_emb, state)
 
 		return resnet_out, output, state
 
