@@ -46,7 +46,7 @@ class VQAModel:
 		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*rnn_layer, dim_hidden], -0.08, 0.08), name='embed_q_state_W')
 		self.embed_q_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_q_state_b')
 
-		bilstm_state_size = None 	# TODO!
+		bilstm_state_size = self.bi_lstm.state_size
 		self.embed_i_state_W = tf.Variable(tf.random_uniform([bilstm_state_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
 		self.embed_i_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_i_state_b')
 
