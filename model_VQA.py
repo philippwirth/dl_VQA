@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.models.rnn import rnn_cell
-from tensorflow.contrib.rnn import BidirectionalGridLSTMCell
+from tf.nn import bidirectional_dynamic_rnn
 
 class Mode(Enum):
 	TRAIN = 0
@@ -9,7 +9,9 @@ class Mode(Enum):
 class VQAModel:
 
 	def __init__(self, rnn_size, rnn_layer, bi_lstm_size,
-				 batch_size, input_embedding_size, vocabulary_size,
+				 batch_size, 
+				 input_embedding_size, image_embedding_size,
+				 vocabulary_size,
 				 drop_out_rate,
 				 max_words_q, n_sub_images,
 				 dim_hidden, dim_output):
@@ -19,6 +21,7 @@ class VQAModel:
 		self.bi_lstm_size = bi_lstm_size						# size of biLSTM for image embedding
 		self.batch_size = batch_size 							# batch size (for question embedding?)
 		self.input_embedding_size = input_embedding_size 		# word embedding size
+		self.image_embedding_size = image_embedding_size		# image embedding size
 		self.vocabulary_size = vocabulary_size 					# size of vocabulary in questions (and answers?)
 		self.drop_out_rate = drop_out_rate 						# dropout rate for lstm layers (0 = no dropout)
 		self.max_words_q = max_words_q 							# maximal number of words
@@ -40,15 +43,18 @@ class VQAModel:
 		# image embedding
 
 		# image embedding: biLSTM (only 1 layer atm)
-		self.bi_lstm = BidirectionalGridLSTMCell(bi_lstm_size, use_peepholes=True)	
+		self.lstm_3 = rnn_cell.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+		self.lstm_dropout_3 = rnn_cell.DropoutWrapper(self.lstm_3, output_keep_prob=1 - self.drop_out_rate)
+		self.lstm_4 = rnn_cell.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+		self.lstm_dropout_4 = rnn_cell.DropoutWrapper(self.lstm_4, output_keep_prob=1 - self.drop_out_rate)
 
 		# question/image fusing
 		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*rnn_layer, dim_hidden], -0.08, 0.08), name='embed_q_state_W')
 		self.embed_q_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_q_state_b')
 
 		bilstm_state_size = self.bi_lstm.state_size
-		self.embed_i_state_W = tf.Variable(tf.random_uniform([bilstm_state_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
-		self.embed_i_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_i_state_b')
+		self.embed_image_W = tf.Variable(tf.random_uniform([bilstm_state_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
+		self.embed_image_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_i_state_b')
 
 		self.embed_scor_W = tf.Variable(tf.random_uniform([dim_hidden, dim_output], -0.08, 0.08), name='embed_scor_W')
 		self.embed_scor_b = tf.Variable(tf.random_uniform([dim_output], -0.08, 0.08), name='embed_scor_b')
@@ -61,10 +67,10 @@ class VQAModel:
 
 		# embed question and image
 		question, q_output, q_state = self._embed_question()
-		image, i_output, i_state = self._embed_image()
+		images, i_output, i_state = self._embed_image()
 
 		# fuse question and image to 1 vector
-		scores = self._fuse(q_state, i_state)
+		scores = self._fuse(q_state, images)
 
 		# predict answer / train model
 		if (mode == Mode.TRAIN):
@@ -108,46 +114,50 @@ class VQAModel:
 	def _embed_image(self):
 		'''
 			embed an image using resnet & bidirectional lstm
-			returns image (placeholder), output (output of the biLSTM), state (of the biLSTM)
+			returns weighted sub-images, output (output of the biLSTM), state (of the biLSTM)
 		'''
 
 		# TODO: RESNET STUFF HERE
-		resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images
+		resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
 
-		# embed image with a biLSTM
-		state = tf.zeros([self.batch_size, self.bi_lstm.state_size])
-		for i in range(self.n_sub_images+1):
-			if i == 0:
-				img_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
-			else:
-				tf.get_variable_scope().reuse_variables()
-				img_emb_linear = resnet_out[:, i-1]
+		# weight sub-images with biLSTM
+		outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out)
+		fwd_out, bwd_out = outputs
+		weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
 
-			img_emb_drop = tf.nn.dropout(img_emb_linear, 1 - self.drop_out_rate)
-			img_emb = tf.tanh(img_emb_drop)
+		# multiply resnet output with weights
+		weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
+		for i in range(self.n_sub_images):
+			weighted_out[:, i] = tf.multiply(resnet_out[:, i], weights[:, i])
 
-			output, state = self.bi_lstm(img_emb, state)
-
-		return resnet_out, output, state
+		return weighted_out, output, state
 
 
-	def _fuse(self, q_state, i_state):
+	def _fuse(self, q_state, weighted_images):
 		'''
-			fuse embedded question and image to 1 vector
+			fuse embedded question and images to 1 vector
 		'''
 
 		# non-linear activation of question state
 		q_state_drop = tf.nn.dropout(q_state, 1-self.drop_out_rate)
 		q_state_linear = tf.nn.xw_plus_b(q_state_drop, self.embed_q_state_W, self.embed_q_state_b)
-		q_state_emb = tf.tanh(q_state_linear)
+		q_state_emb = tf.tanh(q_state_linear)		
 
-		# non-linear activation of image state
-		i_state_drop = tf.nn.dropout(i_state, 1-self.drop_out_rate)
-		i_state_linear = tf.nn.xw_plus_b(i_state_drop, self.embed_i_state_W, self.embed_i_state_b)
-		i_state_emb = tf.tanh(i_state_linear)
+		for i in range(self.n_sub_images):
 
-		# fuse w/ pointwise multiplication
-		scores = tf.mul(q_state_emb, i_state_emb)
-		scores_drop = tf.nn.dropout(scores, 1-self.drop_out_rate)
-		scores_emb = tf.nn.xw_plus_b(scores_drop, self.embed_scor_W, self.embed_scor_b)
-		return scores_emb
+			# non-linear activation of weighted image
+			image_drop = tf.nn.dropout(weighted_images[:, i], 1-self.drop_out_rate)
+			image_linear = tf.nn.xw_plus_b(image_drop, self.embed_image_W, self.embed_image_b)
+			image_emb = tf.tanh(image_linear)
+
+			# fuse w/ pointwise multiplication
+			scores = tf.mul(q_state_emb, image_emb)
+			scores_drop = tf.nn.dropout(scores, 1-self.drop_out_rate)
+			scores_emb = tf.nn.xw_plus_b(scores_drop, self.embed_scor_W, self.embed_scor_b)
+
+			if (i == 0):
+				result = scores_emb
+			else:
+				result = tf.concat([result, scores_emb], 1)
+
+		return result
