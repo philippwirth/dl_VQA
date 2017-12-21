@@ -1,10 +1,7 @@
 import tensorflow as tf
 from tensorflow.models.rnn import rnn_cell
-from tf.nn import bidirectional_dynamic_rnn
+from tensorflow.nn import bidirectional_dynamic_rnn
 
-class Mode(Enum):
-	TRAIN = 0
-	GENERATE = 1
 
 class VQAModel:
 
@@ -59,7 +56,7 @@ class VQAModel:
 		self.embed_scor_b = tf.Variable(tf.random_uniform([dim_output], -0.08, 0.08), name='embed_scor_b')
 
 
-	def build_model(self, mode=Mode.TRAIN):
+	def build_model(self, mode="train"):
 		'''
 			build a model to be trained to answer questions
 		'''
@@ -72,12 +69,12 @@ class VQAModel:
 		scores = self._fuse(q_state, images)
 
 		# predict answer / train model
-		if (mode == Mode.TRAIN):
+		if (mode == "train"):
 			label = tf.placeholder(tf.int64, [self.batch_size])
 			cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(scores, label)
 			loss = tf.reduce_mean(cross_entropy)
 			return loss, None, image, question, label
-		elif (mode == Mode.GENERATE):
+		elif (mode == "generate"):
 			generated_answer = scores
 			return None, generated_answer, image, question, None
 		else:
