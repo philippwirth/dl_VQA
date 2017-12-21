@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 import tensorflow as tf
-from tensorflow.models.rnn import rnn_cell
+import tensorflow.contrib.rnn as rnn
 from tensorflow.nn import bidirectional_dynamic_rnn
 
 
@@ -30,19 +31,19 @@ class VQAModel:
 			tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08), name='embed_ques_W')
 
 		# question embedding: encode words as one vector representing the question
-		self.lstm_1 = rnn_cell.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True)
-		self.lstm_dropout_1 = rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
-		self.lstm_2 = rnn_cell.LSTMCell(rnn_size, rnn_size, use_peepholes=True)
-		self.lstm_dropout_2 = rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
-		self.stacked_lstm = rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
+		self.lstm_1 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True)
+		self.lstm_dropout_1 = rnn.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
+		self.lstm_2 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True)
+		self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
+		self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
 
 		# image embedding
 
 		# image embedding: biLSTM (only 1 layer atm)
-		self.lstm_3 = rnn_cell.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
-		self.lstm_dropout_3 = rnn_cell.DropoutWrapper(self.lstm_3, output_keep_prob=1 - self.drop_out_rate)
-		self.lstm_4 = rnn_cell.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
-		self.lstm_dropout_4 = rnn_cell.DropoutWrapper(self.lstm_4, output_keep_prob=1 - self.drop_out_rate)
+		self.lstm_3 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+		self.lstm_dropout_3 = rnn.DropoutWrapper(self.lstm_3, output_keep_prob=1 - self.drop_out_rate)
+		self.lstm_4 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+		self.lstm_dropout_4 = rnn.DropoutWrapper(self.lstm_4, output_keep_prob=1 - self.drop_out_rate)
 
 		# question/image fusing
 		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*2, dim_hidden], -0.08, 0.08), name='embed_q_state_W')

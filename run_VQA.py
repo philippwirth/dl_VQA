@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tensorflow as tf
 import numpy as np
 import json
@@ -22,10 +23,10 @@ class VQAMain:
 			'input_img_h5': './data/data_img.h5',
 			'input_ques_h5': './data/data_prepro.h5',
 			'img_norm': 1,
-			'image_feature_size:', 2048}
+			'image_feature_size:': 2048}
 
 		self.split = 1
-		self.fetch_data = VQAData(**data_settings)
+		self.fetch_data = VQAData(**self.data_settings)
 
 		# model settings
 		self.model_settings = {
@@ -173,7 +174,7 @@ class VQAMain:
 			current_img = img_feature[current_img_list, :]
 
 			# deal with the last batch (this shit ugly af)
-			if (len(current_img) < 500:
+			if len(current_img) < 500:
 				pad_img = np.zeros((500-len(current_img),dim_image),dtype=np.int)
 				pad_q = np.zeros((500-len(current_img),max_words_q),dtype=np.int)
 				pad_q_len = np.zeros(500-len(current_length_q),dtype=np.int)
@@ -218,8 +219,8 @@ class VQAMain:
 	RUN EVERYTHING!!! 
 '''
 vqa_main = VQAMain()	# it should
-vqa.train()				# work
-vqa.test()				# like this
+vqa_main.train()		# work
+vqa_main.test()			# like this
 
 
 
