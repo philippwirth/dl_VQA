@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
-from tensorflow.nn import bidirectional_dynamic_rnn
+from tensorflow.contrib.rnn import stack_bidirectional_dynamic_rnn
 
 
 class VQAModel:
@@ -49,7 +49,7 @@ class VQAModel:
 		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*2, dim_hidden], -0.08, 0.08), name='embed_q_state_W')
 		self.embed_q_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_q_state_b')
 
-		bilstm_state_size = self.bi_lstm.state_size
+		bilstm_state_size = self.bi_lstm_size # is this correct @philip? was 'self.bi_lstm.state_size' (syntax error)
 		self.embed_image_W = tf.Variable(tf.random_uniform([bilstm_state_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
 		self.embed_image_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_i_state_b')
 
@@ -92,7 +92,7 @@ class VQAModel:
 		question = tf.placeholder(tf.int32, [self.batch_size, self.max_words_q])
 
 		# lstm
-		state = tf.zeros([self.batch_size, self.stacked_lstm.state_size])
+		state = tf.zeros([self.batch_size, self.rnn_size * 2])
 		for i in range(self.max_words_q):
 			if i == 0:
 				ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
@@ -119,7 +119,7 @@ class VQAModel:
 		resnet_out = tf.placeholder(tf.int32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
 
 		# weight sub-images with biLSTM
-		outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out)
+		outputs, output_states = stack_bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out)
 		fwd_out, bwd_out = outputs
 		weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
 

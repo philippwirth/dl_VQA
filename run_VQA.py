@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 import json
+import os
 import time
 
 from model_VQA import VQAModel
@@ -12,18 +13,18 @@ class VQAMain:
 	'''
 		INIT: all settings/variables are specified here
 	'''
-	def __init__(self):
+	def __init__(self, split=1):
 
 		# global parameters
 		print("initializing parameters..")
 
 		# data settings
 		self.data_settings = {
-			'input_json': './data/data_prepro.json',
-			'input_img_h5': './data/data_img.h5',
-			'input_ques_h5': './data/data_prepro.h5',
-			'img_norm': 1,
-			'image_feature_size:': 2048}
+			'input_json': './data/data_prepro_s'+ str(split) +'.json',
+			'input_img_h5': './data/data_img_s'+ str(split) +'.h5',
+			'input_ques_h5': './data/data_prepro_s'+ str(split) +'.h5',
+			'img_norm': 0,
+			'image_feature_size': 2048}
 
 		self.split = 1
 		self.fetch_data = VQAData(**self.data_settings)
@@ -31,7 +32,6 @@ class VQAMain:
 		# model settings
 		self.model_settings = {
 			'rnn_size': 512, 
-			'rnn_layer': 2,
 			'bi_lstm_size': 512,			# temporary
 			'batch_size': 500, 
 			'input_embedding_size': 200,
