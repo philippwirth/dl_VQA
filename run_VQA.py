@@ -3,7 +3,7 @@ import numpy as np
 import json
 import time
 
-from model_VQA import Mode, VQAModel
+from model_VQA import VQAModel
 from data_VQA import VQAData
 
 class VQAMain:
@@ -71,7 +71,7 @@ class VQAMain:
 
 		print("constructing model..")
 		model = VQAModel(**self.model_settings)
-		tf_loss, tf_image, tf_question, tf_label = model.build_model(mode=Mode.Train)
+		tf_loss, tf_image, tf_question, tf_label = model.build_model(mode="train")
 
 		print("initializing session..")
 		sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))
@@ -147,7 +147,7 @@ class VQAMain:
 
 		print("constructing model..")
 		model = VQAModel(**self.model_settings)
-		tf_answer, tf_image, tf_question = model.build_model(mode=Mode.GENERATE)
+		tf_answer, tf_image, tf_question = model.build_model(mode="generate")
 
 		print("initializing session..")
 		sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))
