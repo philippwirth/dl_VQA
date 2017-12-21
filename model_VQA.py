@@ -8,7 +8,7 @@ class Mode(Enum):
 
 class VQAModel:
 
-	def __init__(self, rnn_size, rnn_layer, bi_lstm_size,
+	def __init__(self, rnn_size, bi_lstm_size,
 				 batch_size, 
 				 input_embedding_size, image_embedding_size,
 				 vocabulary_size,
@@ -17,7 +17,6 @@ class VQAModel:
 				 dim_hidden, dim_output):
 		
 		self.rnn_size = rnn_size 								# size of lstm for question embedding
-		self.rnn_layer = rnn_layer 								# number of layers of lstm for question embedding
 		self.bi_lstm_size = bi_lstm_size						# size of biLSTM for image embedding
 		self.batch_size = batch_size 							# batch size (for question embedding?)
 		self.input_embedding_size = input_embedding_size 		# word embedding size
@@ -49,7 +48,7 @@ class VQAModel:
 		self.lstm_dropout_4 = rnn_cell.DropoutWrapper(self.lstm_4, output_keep_prob=1 - self.drop_out_rate)
 
 		# question/image fusing
-		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*rnn_layer, dim_hidden], -0.08, 0.08), name='embed_q_state_W')
+		self.embed_q_state_W = tf.Variable(tf.random_uniform([2*rnn_size*2, dim_hidden], -0.08, 0.08), name='embed_q_state_W')
 		self.embed_q_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_q_state_b')
 
 		bilstm_state_size = self.bi_lstm.state_size
@@ -118,7 +117,8 @@ class VQAModel:
 		'''
 
 		# TODO: RESNET STUFF HERE
-		resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
+		#resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
+		resnet_out = tf.placeholder(tf.int32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
 
 		# weight sub-images with biLSTM
 		outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out)
