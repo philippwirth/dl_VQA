@@ -123,7 +123,9 @@ class VQAModel:
 		resnet_out = tf.placeholder(tf.int32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
 
 		# weight sub-images with biLSTM
-		outputs, output_states = stack_bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out)
+		#tf.get_variable_scope().reuse_variables() # bruche mr das do?
+		outputs, output_states = stack_bidirectional_dynamic_rnn([self.lstm_dropout_3], [self.lstm_dropout_4], resnet_out, dtype=tf.int32)
+
 		fwd_out, bwd_out = outputs
 		weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
 
@@ -139,6 +141,8 @@ class VQAModel:
 		'''
 			fuse embedded question and images to 1 vector
 		'''
+
+		print("fusing..")
 
 		# non-linear activation of question state
 		q_state_drop = tf.nn.dropout(q_state, 1-self.drop_out_rate)
