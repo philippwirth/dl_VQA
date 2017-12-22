@@ -31,11 +31,11 @@ class VQAModel:
 			tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08), name='embed_ques_W')
 
 		# question embedding: encode words as one vector representing the question
-		self.lstm_1 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True)
+		self.lstm_1 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_1 = rnn.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
-		self.lstm_2 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True)
+		self.lstm_2 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
-		self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
+		self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2], state_is_tuple=False)
 
 		# image embedding
 
@@ -88,6 +88,8 @@ class VQAModel:
 			returns question (placeholder), output (hidden state / output of last lstm), state (state after last lstm)
 		'''
 
+		print("embedding question..")
+
 		# question placeholder, get array of question words
 		question = tf.placeholder(tf.int32, [self.batch_size, self.max_words_q])
 
@@ -113,6 +115,8 @@ class VQAModel:
 			embed an image using resnet & bidirectional lstm
 			returns weighted sub-images, output (output of the biLSTM), state (of the biLSTM)
 		'''
+
+		print("embedding image..")
 
 		# TODO: RESNET STUFF HERE
 		#resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
