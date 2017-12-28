@@ -35,7 +35,7 @@ class VQAMain:
 			'bi_lstm_size': 512,			# temporary
 			'batch_size': 500, 
 			'input_embedding_size': 200,
-			'image_embedding_size': 200,	# temporary
+			'image_embedding_size': self.data_settings['image_feature_size'],
 			'max_words_q': 26,
 			'n_sub_images': 9,				# temporary
 			'dim_hidden': 1024,
@@ -51,7 +51,7 @@ class VQAMain:
 
 		# misc
 		self.gpu_id = 0
-		self.max_itr = 150000
+		self.max_itr = 1 # for testing reasons put back to 150000 !!!!!!!!!!
 		self.n_epochs = 300
 
 	'''
@@ -82,7 +82,7 @@ class VQAMain:
 		lr = tf.Variable(self.learning_rate)
 		opt = tf.train.AdamOptimizer(learning_rate=lr)
 
-		gvs = opt.computed_gradients(tf_loss, tvars)
+		gvs = opt.compute_gradients(tf_loss, tvars)
 		clipped_gvs = [(tf.clip_by_value(grad, -10., 10.), var) for grad, var in gvs]
 		train_op = opt.apply_gradients(clipped_gvs)
 
@@ -94,7 +94,7 @@ class VQAMain:
 			t_start = time.time()
 
 			# shuffle training data
-			index = np.random.random_integers(0, num_train-1, batch_size)
+			index = np.random.random_integers(0, num_train-1, self.batch_size)
 
 			current_question = train_data['question'][index, :]
 			current_length_q = train_data['length_q'][index]
@@ -106,9 +106,9 @@ class VQAMain:
 			_, loss = sess.run(
 						[train_op, tf_loss],
 						feed_dict={
-							image: current_img,
-							question: current_question,
-							label: current_answers
+							tf_image: current_img,
+							tf_question: current_question,
+							tf_label: current_answers
 						})
 
 			current_learning_rate = lr * self.decay_factor
@@ -191,8 +191,8 @@ class VQAMain:
 			generated_ans = sess.run(
 				tf_answer,
 				feed_dict={
-					image: current_img,
-					question: current_question
+					tf_image: current_img,
+					tf_question: current_question
 				})
 
 			top_ans = np.argmax(generated_ans, axis=1)

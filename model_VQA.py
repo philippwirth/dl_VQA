@@ -32,9 +32,9 @@ class VQAModel:
 			tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08), name='embed_ques_W')
 
 		# question embedding: encode words as one vector representing the question
-		self.lstm_1 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True, state_is_tuple=False)
+		self.lstm_1 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_1 = rnn.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
-		self.lstm_2 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True, state_is_tuple=False)
+		self.lstm_2 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
 		self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2], state_is_tuple=False)
 
@@ -65,20 +65,20 @@ class VQAModel:
 
 		# embed question and image
 		question, q_output, q_state = self._embed_question()
-		images, i_output, i_state = self._embed_image()
+		resnet_out, i_output, images = self._embed_image()
 
 		# fuse question and image to 1 vector
 		scores = self._fuse(q_state, images)
 
 		# predict answer / train model
 		if (mode == "train"):
-			label = tf.placeholder(tf.int64, [self.batch_size])
+			label = tf.placeholder(tf.int64, [self.batch_size], name='tf_label')
 			cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=scores, labels=label)
 			loss = tf.reduce_mean(cross_entropy)
-			return loss, None, images, question, label
+			return loss, None, resnet_out, question, label
 		elif (mode == "generate"):
 			generated_answer = scores
-			return None, generated_answer, images, question, None
+			return None, generated_answer, resnet_out, question, None
 		else:
 			raise ValueError("Bad mode!")
 
@@ -92,7 +92,7 @@ class VQAModel:
 		print("embedding question..")
 
 		# question placeholder, get array of question words
-		question = tf.placeholder(tf.int32, [self.batch_size, self.max_words_q])
+		question = tf.placeholder(tf.int32, [self.batch_size, self.max_words_q], name='tf_question')
 
 		# lstm
 		with tf.variable_scope("question"):
@@ -121,8 +121,8 @@ class VQAModel:
 		print("embedding image..")
 
 		# TODO: RESNET STUFF HERE
-		#resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
-		resnet_out = tf.placeholder(tf.float32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
+		#resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x dim_resout
+		resnet_out = tf.placeholder(tf.float32, [self.batch_size, self.n_sub_images, self.image_embedding_size], name='tf_images')
 
 		# weight sub-images with biLSTM
 		with tf.variable_scope("image"):
@@ -135,7 +135,7 @@ class VQAModel:
 			weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
 			weighted_out = tf.multiply(resnet_out, weights)
 
-		return weighted_out, outputs, output_states
+		return resnet_out, outputs, weighted_out
 
 
 	def _fuse(self, q_state, weighted_images):
