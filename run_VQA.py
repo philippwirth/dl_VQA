@@ -72,7 +72,7 @@ class VQAMain:
 
 		print("constructing model..")
 		model = VQAModel(**self.model_settings)
-		tf_loss, tf_image, tf_question, tf_label = model.build_model(mode="train")
+		tf_loss, _, tf_image, tf_question, tf_label = model.build_model(mode="train")
 
 		print("initializing session..")
 		sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))
@@ -148,7 +148,7 @@ class VQAMain:
 
 		print("constructing model..")
 		model = VQAModel(**self.model_settings)
-		tf_answer, tf_image, tf_question = model.build_model(mode="generate")
+		_, tf_answer, tf_image, tf_question, _ = model.build_model(mode="generate")
 
 		print("initializing session..")
 		sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))

@@ -75,10 +75,10 @@ class VQAModel:
 			label = tf.placeholder(tf.int64, [self.batch_size])
 			cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=scores, labels=label)
 			loss = tf.reduce_mean(cross_entropy)
-			return loss, None, image, question, label
+			return loss, None, images, question, label
 		elif (mode == "generate"):
 			generated_answer = scores
-			return None, generated_answer, image, question, None
+			return None, generated_answer, images, question, None
 		else:
 			raise ValueError("Bad mode!")
 
