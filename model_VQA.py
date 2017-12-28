@@ -32,9 +32,9 @@ class VQAModel:
 			tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08), name='embed_ques_W')
 
 		# question embedding: encode words as one vector representing the question
-		self.lstm_1 = rnn.LSTMCell(rnn_size, rnn_size, use_peepholes=True, state_is_tuple=False)
+		self.lstm_1 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_1 = rnn.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
-		self.lstm_2 = rnn.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True, state_is_tuple=False)
+		self.lstm_2 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False)
 		self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
 		self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2], state_is_tuple=False)
 
