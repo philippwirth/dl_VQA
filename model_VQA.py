@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
-from tensorflow.contrib.rnn import stack_bidirectional_dynamic_rnn
+from tensorflow.contrib.rnn import stack_bidirectional_dynamic_rnn # stacked_... is just a mulitlayer version of the non-stack model
+from tensorflow.python.ops.rnn import bidirectional_dynamic_rnn
 
 
 class VQAModel:
@@ -94,18 +95,19 @@ class VQAModel:
 		question = tf.placeholder(tf.int32, [self.batch_size, self.max_words_q])
 
 		# lstm
-		state = tf.zeros([self.batch_size, self.rnn_size * 2])
-		for i in range(self.max_words_q):
-			if i == 0:
-				ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
-			else:
-				tf.get_variable_scope().reuse_variables() # reuse same weights as previous lstm (it's the same)
-				ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:, i - 1])
+		with tf.variable_scope("question"):
+			state = tf.zeros([self.batch_size, self.rnn_size * 2])
+			for i in range(self.max_words_q):
+				if i == 0:
+					ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
+				else:
+					tf.get_variable_scope().reuse_variables() # reuse same weights as previous lstm (it's the same)
+					ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:, i - 1])
 
-			ques_emb_drop = tf.nn.dropout(ques_emb_linear, 1 - self.drop_out_rate)
-			ques_emb = tf.tanh(ques_emb_drop)
+				ques_emb_drop = tf.nn.dropout(ques_emb_linear, 1 - self.drop_out_rate)
+				ques_emb = tf.tanh(ques_emb_drop)
 
-			output, state = self.stacked_lstm(ques_emb, state)
+				output, state = self.stacked_lstm(ques_emb, state)
 
 		return question, output, state
 
@@ -120,21 +122,20 @@ class VQAModel:
 
 		# TODO: RESNET STUFF HERE
 		#resnet_out = None # output from resnet, should be a tensor of dim: self.batch_size x n_sub_images x image_embedding_size
-		resnet_out = tf.placeholder(tf.int32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
+		resnet_out = tf.placeholder(tf.float32, [self.batch_size, self.n_sub_images, self.image_embedding_size])
 
 		# weight sub-images with biLSTM
-		#tf.get_variable_scope().reuse_variables() # bruche mr das do?
-		outputs, output_states = stack_bidirectional_dynamic_rnn([self.lstm_dropout_3], [self.lstm_dropout_4], resnet_out, dtype=tf.int32)
+		with tf.variable_scope("image"):
+			outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out, dtype=tf.float32)
 
-		fwd_out, bwd_out = outputs
-		weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
+			fwd_out, bwd_out = outputs
+			weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
 
-		# multiply resnet output with weights
-		weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
-		for i in range(self.n_sub_images):
-			weighted_out[:, i] = tf.multiply(resnet_out[:, i], weights[:, i])
+			# multiply resnet output with weights
+			weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
+			weighted_out = tf.multiply(resnet_out, weights)
 
-		return weighted_out, output, state
+		return weighted_out, outputs, output_states
 
 
 	def _fuse(self, q_state, weighted_images):

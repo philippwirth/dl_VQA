@@ -37,7 +37,7 @@ class VQAMain:
 			'input_embedding_size': 200,
 			'image_embedding_size': 200,	# temporary
 			'max_words_q': 26,
-			'n_sub_images': 16,				# temporary
+			'n_sub_images': 9,				# temporary
 			'dim_hidden': 1024,
 			'dim_output': 1000}
 
