@@ -51,7 +51,7 @@ class VQAModel:
 		self.embed_q_state_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_q_state_b')
 
 		bilstm_state_size = self.bi_lstm_size # is this correct @philip? was 'self.bi_lstm.state_size' (syntax error)
-		self.embed_image_W = tf.Variable(tf.random_uniform([bilstm_state_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
+		self.embed_image_W = tf.Variable(tf.random_uniform([image_embedding_size, dim_hidden], -0.08, 0.08), name='ebed_i_state_W')
 		self.embed_image_b = tf.Variable(tf.random_uniform([dim_hidden], -0.08, 0.08), name='embed_i_state_b')
 
 		self.embed_scor_W = tf.Variable(tf.random_uniform([dim_hidden, dim_output], -0.08, 0.08), name='embed_scor_W')
@@ -73,7 +73,7 @@ class VQAModel:
 		# predict answer / train model
 		if (mode == "train"):
 			label = tf.placeholder(tf.int64, [self.batch_size])
-			cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(scores, label)
+			cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=scores, labels=label)
 			loss = tf.reduce_mean(cross_entropy)
 			return loss, None, image, question, label
 		elif (mode == "generate"):
@@ -158,7 +158,7 @@ class VQAModel:
 			image_emb = tf.tanh(image_linear)
 
 			# fuse w/ pointwise multiplication
-			scores = tf.mul(q_state_emb, image_emb)
+			scores = tf.multiply(q_state_emb, image_emb)
 			scores_drop = tf.nn.dropout(scores, 1-self.drop_out_rate)
 			scores_emb = tf.nn.xw_plus_b(scores_drop, self.embed_scor_W, self.embed_scor_b)
 
