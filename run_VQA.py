@@ -31,7 +31,7 @@ class VQAMain:
 
 		# model settings
 		self.model_settings = {
-			'rnn_size': 512, 
+			'rnn_size': 512,
 			'bi_lstm_size': 512,			# temporary
 			'batch_size': 500, 
 			'input_embedding_size': 200,
@@ -48,11 +48,14 @@ class VQAMain:
 
 		# checkpoint_path
 		self.checkpoint_path = 'model_save/'
+		if not os.path.exists(self.checkpoint_path):
+			os.makedirs(self.checkpoint_path)
 
 		# misc
 		self.gpu_id = 0
-		self.max_itr = 1 # for testing reasons put back to 150000 !!!!!!!!!!
+		self.max_itr = 3 # for testing reasons put back to 150000 !!!!!!!!!!
 		self.n_epochs = 300
+		self.verbose = True
 
 	'''
 		TRAIN: call to train a VQAModel
@@ -91,6 +94,9 @@ class VQAMain:
 		print("start training..")
 		for itr in range(self.max_itr):
 
+			if self.verbose:
+				print("starting epoch " + str(itr))
+
 			t_start = time.time()
 
 			# shuffle training data
@@ -112,13 +118,16 @@ class VQAMain:
 						})
 
 			current_learning_rate = lr * self.decay_factor
-			lr.assigne(current_learning_rate).eval()
+			lr.assign(current_learning_rate).eval()
 
 			t_stop = time.time()
-			if np.mod(itr, 100) == 0:
+			if self.verbose:
+				print("Iteration: " + str(itr) + " Loss: " + str(loss))
+				print("Time Cost: " + str(t_stop - t_start) + "s")
+			if itr > 0 and np.mod(itr, 100) == 0:
 				print("Iteration: " + str(itr) + " Loss: " + str(loss) + " Learning Rate:" + str(lr.eval()))
 				print("Time Cost: " + str(t_stop - t_start) + "s")
-			if np.mod(itr, 15000) == 0:
+			if itr > 0 and np.mod(itr, self.max_itr) == 0:
 				print("Iteration " + str(itr) + " is done - saving the model..")
 				saver.save(sess, os.path.join(self.checkpoint_path, 'model'), global_step=itr)
 

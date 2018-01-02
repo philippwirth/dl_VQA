@@ -96,7 +96,7 @@ class VQAModel:
 
 		# lstm
 		with tf.variable_scope("question"):
-			state = tf.zeros([self.batch_size, self.rnn_size * 2])
+			state = tf.zeros([self.batch_size, 2*2*self.rnn_size])
 			for i in range(self.max_words_q):
 				if i == 0:
 					ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
