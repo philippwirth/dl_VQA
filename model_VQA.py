@@ -32,18 +32,18 @@ class VQAModel:
             tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08), name='embed_ques_W')
 
         # question embedding: encode words as one vector representing the question
-        self.lstm_1 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False)
+        self.lstm_1 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False, reuse=tf.get_variable_scope().reuse)
         self.lstm_dropout_1 = rnn.DropoutWrapper(self.lstm_1, output_keep_prob=1 - self.drop_out_rate)
-        self.lstm_2 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False)
-        self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate)
+        self.lstm_2 = rnn.LSTMCell(rnn_size, use_peepholes=True, state_is_tuple=False, reuse=tf.get_variable_scope().reuse)
+        self.lstm_dropout_2 = rnn.DropoutWrapper(self.lstm_2, output_keep_prob=1 - self.drop_out_rate) 
         self.stacked_lstm = rnn.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2], state_is_tuple=False)
 
         # image embedding
 
         # image embedding: biLSTM (only 1 layer atm)
-        self.lstm_3 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+        self.lstm_3 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1, reuse=tf.get_variable_scope().reuse)
         self.lstm_dropout_3 = rnn.DropoutWrapper(self.lstm_3, output_keep_prob=1 - self.drop_out_rate)
-        self.lstm_4 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1)
+        self.lstm_4 = rnn.LSTMCell(bi_lstm_size, image_embedding_size, use_peepholes=True, num_proj=1, reuse=tf.get_variable_scope().reuse)
         self.lstm_dropout_4 = rnn.DropoutWrapper(self.lstm_4, output_keep_prob=1 - self.drop_out_rate)
 
         # question/image fusing
@@ -64,8 +64,8 @@ class VQAModel:
         '''
 
         # embed question and image
-        question, q_output, q_state = self._embed_question()
-        resnet_out, i_output, images = self._embed_image()
+        question, q_output, q_state = self._embed_question(mode=mode)
+        resnet_out, i_output, images = self._embed_image(mode=mode)
 
         # fuse question and image to 1 vector
         scores = self._fuse(q_state, images)
@@ -83,7 +83,7 @@ class VQAModel:
             raise ValueError("Bad mode!")
 
 
-    def _embed_question(self):
+    def _embed_question(self, mode):
         '''
             embed a question using a 2-layer lstm,
             returns question (placeholder), output (hidden state / output of last lstm), state (state after last lstm)
@@ -99,7 +99,10 @@ class VQAModel:
             state = tf.zeros([self.batch_size, 2*2*self.rnn_size])
             for i in range(self.max_words_q):
                 if i == 0:
-                    ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
+                	ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
+                	if mode == "generate":
+                		print("MODE: generate")
+                		tf.get_variable_scope().reuse_variables()
                 else:
                     tf.get_variable_scope().reuse_variables() # reuse same weights as previous lstm (it's the same)
                     ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:, i - 1])
@@ -107,12 +110,12 @@ class VQAModel:
                 ques_emb_drop = tf.nn.dropout(ques_emb_linear, 1 - self.drop_out_rate)
                 ques_emb = tf.tanh(ques_emb_drop)
 
-                output, state = self.stacked_lstm(ques_emb, state)
+                output, state = self.stacked_lstm(ques_emb, state) #, scope="question")
 
         return question, output, state
 
 
-    def _embed_image(self):
+    def _embed_image(self, mode):
         '''
             embed an image using resnet & bidirectional lstm
             returns weighted sub-images, output (output of the biLSTM), state (of the biLSTM)
@@ -126,14 +129,19 @@ class VQAModel:
 
         # weight sub-images with biLSTM
         with tf.variable_scope("image"):
-            outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out, dtype=tf.float32)
 
-            fwd_out, bwd_out = outputs
-            weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
+        	if mode == "generate":
+        		print("MODE: generate")
+        		tf.get_variable_scope().reuse_variables()
 
-            # multiply resnet output with weights
-            weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
-            weighted_out = tf.multiply(resnet_out, weights)
+        	outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out, dtype=tf.float32)
+
+        	fwd_out, bwd_out = outputs
+        	weights = tf.nn.softmax(tf.add(fwd_out, bwd_out))
+
+        # multiply resnet output with weights
+        	weighted_out = tf.zeros([self.batch_size, self.n_sub_images, self.image_embedding_size])
+        	weighted_out = tf.multiply(resnet_out, weights)
 
         return resnet_out, outputs, weighted_out
 
