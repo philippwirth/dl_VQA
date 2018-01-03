@@ -53,7 +53,7 @@ class VQAMain:
 
         # misc
         self.gpu_id = 0
-        self.max_itr = 3 # for testing reasons put back to 150000 !!!!!!!!!!
+        self.max_itr = 1 # for testing reasons put back to 150000 !!!!!!!!!!
         self.n_epochs = 300
         self.verbose = True
 
@@ -161,7 +161,9 @@ class VQAMain:
 
         print("initializing session..")
         sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))
-        saver = tf.train.Saver()
+        #saver = tf.train.Saver()
+        print("Model at: " + model_path)
+        saver = tf.train.import_meta_graph(model_path + '.meta')
         saver.restore(sess, model_path)
 
         print("generating answers..")
@@ -171,12 +173,12 @@ class VQAMain:
             t_start = time.time()
 
             # fetch questions & images
-            if current_batch_start_idx + batch_size < num_test:
-                current_batch_file_idx = range(current_batch_start_idx, current_batch_start_idx + batch_size)
+            if current_batch_start_idx + self.batch_size < num_test:
+                current_batch_file_idx = range(current_batch_start_idx, current_batch_start_idx + self.batch_size)
             else:
                 current_batch_file_idx = rangE(current_batch_start_idx, num_test)
 
-            current_question = test_data['question'][current_batch_file_idx, :]
+            current_question = test_data['question'][current_batch_file_idx,:]
             current_length_q = test_data['length_q'][current_batch_file_idx]
             current_img_list = test_data['img_list'][current_batch_file_idx]
             current_ques_id = test_data['ques_id'][current_batch_file_idx]
@@ -227,9 +229,10 @@ class VQAMain:
 '''
     RUN EVERYTHING!!! 
 '''
-vqa_main = VQAMain()	# it should
-vqa_main.train()		# work
-vqa_main.test()			# like this
+vqa_main = VQAMain()	# this
+vqa_main.train()		# should
+tf.reset_default_graph()# ! 
+vqa_main.test()			# work
 
 
 

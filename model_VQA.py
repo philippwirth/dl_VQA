@@ -102,7 +102,7 @@ class VQAModel:
                 	ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
                 	if mode == "generate":
                 		print("MODE: generate")
-                		tf.get_variable_scope().reuse_variables()
+                		#tf.get_variable_scope().reuse_variables()
                 else:
                     tf.get_variable_scope().reuse_variables() # reuse same weights as previous lstm (it's the same)
                     ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:, i - 1])
@@ -132,7 +132,7 @@ class VQAModel:
 
         	if mode == "generate":
         		print("MODE: generate")
-        		tf.get_variable_scope().reuse_variables()
+        		#tf.get_variable_scope().reuse_variables()
 
         	outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out, dtype=tf.float32)
 
