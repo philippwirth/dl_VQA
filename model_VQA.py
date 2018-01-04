@@ -77,7 +77,7 @@ class VQAModel:
             loss = tf.reduce_mean(cross_entropy)
             return loss, None, resnet_out, question, label
         elif (mode == "generate"):
-            generated_answer = scores
+            generated_answer = tf.nn.softmax(scores)
             return None, generated_answer, resnet_out, question, None
         else:
             raise ValueError("Bad mode!")
@@ -158,6 +158,9 @@ class VQAModel:
         q_state_linear = tf.nn.xw_plus_b(q_state_drop, self.embed_q_state_W, self.embed_q_state_b)
         q_state_emb = tf.tanh(q_state_linear)
 
+        #scores_sub_images = np.zeros([self.batch_size, self.n_sub_images, self.dim_hidden, 1])
+        scores_sub_images = []
+
         for i in range(self.n_sub_images):
 
             # non-linear activation of weighted image
@@ -168,11 +171,11 @@ class VQAModel:
             # fuse w/ pointwise multiplication
             scores = tf.multiply(q_state_emb, image_emb)
             scores_drop = tf.nn.dropout(scores, 1-self.drop_out_rate)
-            scores_emb = tf.nn.xw_plus_b(scores_drop, self.embed_scor_W, self.embed_scor_b)
 
-            if (i == 0):
-                result = scores_emb
-            else:
-                result = tf.concat([result, scores_emb], 1)
+            scores_sub_images.append(scores_drop)
 
-        return result
+        scores_sub_images_tensor = tf.convert_to_tensor(scores_sub_images)
+        scores_pooled = tf.reduce_max(scores_sub_images_tensor,0)
+        scores_emb = tf.nn.xw_plus_b(scores_pooled, self.embed_scor_W, self.embed_scor_b)
+
+        return scores_emb

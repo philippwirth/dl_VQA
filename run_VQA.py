@@ -176,7 +176,7 @@ class VQAMain:
             if current_batch_start_idx + self.batch_size < num_test:
                 current_batch_file_idx = range(current_batch_start_idx, current_batch_start_idx + self.batch_size)
             else:
-                current_batch_file_idx = rangE(current_batch_start_idx, num_test)
+                current_batch_file_idx = range(current_batch_start_idx, num_test)
 
             current_question = test_data['question'][current_batch_file_idx,:]
             current_length_q = test_data['length_q'][current_batch_file_idx]
@@ -186,8 +186,8 @@ class VQAMain:
 
             # deal with the last batch (this shit ugly af)
             if len(current_img) < 500:
-                pad_img = np.zeros((500-len(current_img),dim_image),dtype=np.int)
-                pad_q = np.zeros((500-len(current_img),max_words_q),dtype=np.int)
+                pad_img = np.zeros((500-len(current_img),self.model_settings['image_embedding_size']),dtype=np.int)
+                pad_q = np.zeros((500-len(current_img),self.model_settings['max_words_q']),dtype=np.int)
                 pad_q_len = np.zeros(500-len(current_length_q),dtype=np.int)
                 pad_q_id = np.zeros(500-len(current_length_q),dtype=np.int)
                 pad_ques_id = np.zeros(500-len(current_length_q),dtype=np.int)
@@ -216,11 +216,11 @@ class VQAMain:
                 result.append({u'answer': ans, u'question_id': str(current_ques_id[i])})
 
             t_stop = time.time()
-            print("Test batch: ", current_barch_file_idx[0])
+            print("Test batch: ", current_batch_file_idx[0])
             print("Time Cost:", str(t_stop - t_start) + "s")
 
         print("done..")
-        print("Overall Time:" + str(t_stop_total - t_start_total) + "s")
+        print("Overall Time:" + str(t_stop - t_start_total) + "s")
         print("saving result..")
         my_list = list(result)
         dd = json.dump(my_list, open('data.json', 'w'))
