@@ -134,6 +134,7 @@ class VQAMain:
         print("done..")
         saver.save(sess, os.path.join(self.checkpoint_path, 'model'), global_step=self.n_epochs)
         t_stop_total = time.time()
+        sess.close()
         print("Overall Time: " + str(t_stop_total - t_start_total) + "s")
 
     '''
@@ -161,9 +162,8 @@ class VQAMain:
 
         print("initializing session..")
         sess = tf.InteractiveSession(config=tf.ConfigProto(allow_soft_placement=True))
-        #saver = tf.train.Saver()
+        saver = tf.train.Saver()
         print("Model at: " + model_path)
-        saver = tf.train.import_meta_graph(model_path + '.meta')
         saver.restore(sess, model_path)
 
         print("generating answers..")
@@ -224,6 +224,7 @@ class VQAMain:
         print("saving result..")
         my_list = list(result)
         dd = json.dump(my_list, open('data.json', 'w'))
+        sess.close()
 
 
 '''
