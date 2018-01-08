@@ -26,16 +26,19 @@ python preprocess.py --split 1 --subset False --num_ans 1000
 python preprocess.py --split 2 --subset False --num_ans 1000
 python preprocess.py --split 3 --subset False --num_ans 1000
 ```
+To download the image-data and the ResNet_v1_101 checkpoint execute the following comman int he main directory
+```bash
+python download_data.py
+```
 
-### Split Images into 9 overlapping sub-images
-
-preprocess_img.py expects the train-/ test-/ val- data to be in the directory "/train2014" / "/test2014" / "/val2014". To split the images execute the following command
+To preprocess / split the images, execute the following command
 ```bash
 python preprocess_img.py
 ```
 This will save the sub-images in the following directories "/sub_img_train2014", "/sub_img_test2014" and "/sub_img_val2014"
 
-### Get Features using Resnet
+
+### Get Features using Resnet_v1_101
 
 You will need to checkout the Tensorflow models repository. To do so, execute
 ```bash
