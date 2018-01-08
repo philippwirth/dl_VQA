@@ -64,8 +64,8 @@ class VQAModel:
         '''
 
         # embed question and image
-        question, q_output, q_state = self._embed_question(mode=mode)
-        resnet_out, i_output, images = self._embed_image(mode=mode)
+        question, q_output, q_state = self._embed_question()
+        resnet_out, i_output, images = self._embed_image()
 
         # fuse question and image to 1 vector
         scores = self._fuse(q_state, images)
@@ -83,7 +83,7 @@ class VQAModel:
             raise ValueError("Bad mode!")
 
 
-    def _embed_question(self, mode):
+    def _embed_question(self):
         '''
             embed a question using a 2-layer lstm,
             returns question (placeholder), output (hidden state / output of last lstm), state (state after last lstm)
@@ -100,9 +100,6 @@ class VQAModel:
             for i in range(self.max_words_q):
                 if i == 0:
                 	ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
-                	if mode == "generate":
-                		print("MODE: generate")
-                		#tf.get_variable_scope().reuse_variables()
                 else:
                     tf.get_variable_scope().reuse_variables() # reuse same weights as previous lstm (it's the same)
                     ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:, i - 1])
@@ -115,7 +112,7 @@ class VQAModel:
         return question, output, state
 
 
-    def _embed_image(self, mode):
+    def _embed_image(self):
         '''
             embed an image using resnet & bidirectional lstm
             returns weighted sub-images, output (output of the biLSTM), state (of the biLSTM)
@@ -129,10 +126,6 @@ class VQAModel:
 
         # weight sub-images with biLSTM
         with tf.variable_scope("image"):
-
-        	if mode == "generate":
-        		print("MODE: generate")
-        		#tf.get_variable_scope().reuse_variables()
 
         	outputs, output_states = bidirectional_dynamic_rnn(self.lstm_dropout_3, self.lstm_dropout_4, resnet_out, dtype=tf.float32)
 
